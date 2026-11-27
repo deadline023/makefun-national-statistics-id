@@ -1,46 +1,45 @@
-// main.js — router hash dan boot. Tanpa logika data: semua konten dari views.js.
+// Router hash DataNusa + pengendali tabel daerah (urut & saring).
+import { beranda, penduduk, ekonomi, masyarakat, daerah, daerahTabel, sumber } from "./views.js";
 
-import {
-  renderHome,
-  renderPopulation,
-  renderEconomy,
-  renderPeople,
-  renderRegions,
-  renderSources,
-  bindRegionTable,
-} from "./views.js";
+const app = document.getElementById("app");
+const stateDaerah = { urut: "pop", arah: -1, gugus: "Semua" };
 
-const ROUTES = {
-  "/": { title: "Beranda", render: renderHome },
-  "/population": { title: "Penduduk", render: renderPopulation },
-  "/economy": { title: "Ekonomi", render: renderEconomy },
-  "/people": { title: "Masyarakat", render: renderPeople },
-  "/regions": { title: "Daerah", render: renderRegions, after: bindRegionTable },
-  "/sources": { title: "Sumber", render: renderSources },
+const HALAMAN = {
+  "": beranda, beranda,
+  penduduk, ekonomi, masyarakat, sumber,
 };
 
-function currentPath() {
-  const hash = window.location.hash || "#/";
-  const path = hash.slice(1) || "/";
-  return ROUTES[path] ? path : "/";
+function render() {
+  const rute = location.hash.replace(/^#\/?/, "").split("?")[0];
+  document.querySelectorAll("nav a").forEach((a) => {
+    a.classList.toggle("on", a.getAttribute("href") === "#/" + (rute || "beranda") || (rute === "" && a.getAttribute("href") === "#/beranda"));
+  });
+  if (rute === "daerah") {
+    app.innerHTML = daerah(stateDaerah);
+    ikatTabel();
+  } else {
+    app.innerHTML = (HALAMAN[rute] || beranda)();
+  }
+  window.scrollTo(0, 0);
 }
 
-function render() {
-  const path = currentPath();
-  const route = ROUTES[path];
-  const app = document.getElementById("app");
-  app.innerHTML = route.render();
-  if (route.after) route.after();
-  document.title = route.title + " — DataNusa · Statistik Indonesia";
-  document.querySelectorAll(".nav-link").forEach((a) => {
-    const href = a.getAttribute("href");
-    if (href === "#" + path) {
-      a.setAttribute("aria-current", "page");
-    } else {
-      a.removeAttribute("aria-current");
-    }
+function ikatTabel() {
+  app.querySelectorAll("th[data-urut]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const k = th.getAttribute("data-urut");
+      if (stateDaerah.urut === k) stateDaerah.arah *= -1;
+      else { stateDaerah.urut = k; stateDaerah.arah = k === "nama" ? 1 : -1; }
+      document.getElementById("tabel-daerah").innerHTML = daerahTabel(stateDaerah);
+      ikatTabel();
+    });
   });
-  window.scrollTo(0, 0);
+  app.querySelectorAll(".fbtn").forEach((b) => {
+    b.addEventListener("click", () => {
+      stateDaerah.gugus = b.getAttribute("data-gugus");
+      app.innerHTML = daerah(stateDaerah);
+      ikatTabel();
+    });
+  });
 }
 
 window.addEventListener("hashchange", render);
